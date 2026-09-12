@@ -4,7 +4,7 @@ import pygame
 # Configuration
 WIDTH, HEIGHT = 900, 850
 MAX_AGE = 40
-FADE_SPEED = 25  # Wie schnell verblasst die Spur (0-255 pro Schritt)
+FADE_SPEED = 25  # How fast the trail fades out (0-255 per step)
 
 # Colors
 COLOR_BG = (10, 10, 15)
@@ -46,7 +46,7 @@ def get_cell_color(age):
 
 
 def get_rule_properties(survive_rules, birth_rules, neighborhood):
-    """Generates an extensive list of known rules and detailed behavioral tags."""
+    """Generates an extensive list of known rules and detailed behavioral tags in English."""
     s_set = set(survive_rules)
     b_set = set(birth_rules)
     traits = []
@@ -61,67 +61,67 @@ def get_rule_properties(survive_rules, birth_rules, neighborhood):
 
     # 1. Neighborhood Tag
     if neighborhood == "von_neumann":
-        traits.append(("[NEUMANN]", PURPLE, "Von-Neumann-Nachbarschaft (4 Nachbarn)"))
+        traits.append(("[NEUMANN]", PURPLE, "Von Neumann neighborhood (4 neighbors)"))
     else:
-        traits.append(("[MOORE]", CYAN, "Moore-Nachbarschaft (8 Nachbarn)"))
+        traits.append(("[MOORE]", CYAN, "Moore neighborhood (8 neighbors)"))
 
     # 2. Extended Famous Rule Sets Identification
     if neighborhood == "moore":
         if b_set == {3} and s_set == {2, 3}:
-            traits.append(("[KLASSISCH]", GREEN, "Conways Game of Life (B3/S23)"))
+            traits.append(("[CLASSIC]", GREEN, "Conway's Game of Life (B3/S23)"))
         elif b_set == {3, 6} and s_set == {2, 3}:
-            traits.append(("[HIGHLIFE]", BLUE, "HighLife: Enthält Replikator-Muster (B36/S23)"))
+            traits.append(("[HIGHLIFE]", BLUE, "HighLife: Contains replicator patterns (B36/S23)"))
         elif b_set == {2} and s_set == set():
-            traits.append(("[SEEDS]", YELLOW, "Seeds: Reine Vermehrung, kein Überleben (B2/S)"))
+            traits.append(("[SEEDS]", YELLOW, "Seeds: Pure reproduction, no survival (B2/S)"))
         elif b_set == {3, 5, 6, 7, 8} and s_set == {5, 6, 7, 8}:
-            traits.append(("[DIAMOEBA]", PURPLE, "Diamoeba: Organisches Amöben-Wachstum"))
+            traits.append(("[DIAMOEBA]", PURPLE, "Diamoeba: Organic amoeba growth"))
         elif b_set == {3} and s_set == {0, 1, 2, 3, 4, 5, 6, 7, 8}:
-            traits.append(("[NO-DEATH]", GREEN, "Life without Death: Zellen sterben nie"))
+            traits.append(("[NO-DEATH]", GREEN, "Life without Death: Cells never die"))
         elif b_set == {2, 3, 4} and s_set == {3, 4}:
-            traits.append(("[MAZE]", BLUE, "Labyrinth-Generator (B234/S34)"))
+            traits.append(("[MAZE]", BLUE, "Maze generator (B234/S34)"))
         elif b_set == {3, 6, 7, 8} and s_set == {3, 4, 6, 7, 8}:
-            traits.append(("[DAY & NIGHT]", YELLOW, "Day & Night: Symmetrisches Universum"))
+            traits.append(("[DAY & NIGHT]", YELLOW, "Day & Night: Symmetric universe"))
         elif b_set == {3} and s_set == {4, 6, 7, 8}:
-            traits.append(("[CORAL]", ORANGE, "Coral Growth: Bildet korallenartige Strukturen"))
+            traits.append(("[CORAL]", ORANGE, "Coral Growth: Forms coral-like structures"))
         elif b_set == {3, 4} and s_set == {3, 4}:
-            traits.append(("[ROASTED]", RED, "34 Life: Kompakte, stabile Cluster"))
+            traits.append(("[ROASTED]", RED, "34 Life: Compact, stable clusters"))
         elif b_set == {3, 5, 7} and s_set == {1, 3, 5, 8}:
-            traits.append(("[AMOEBA]", PURPLE, "Amoeba-Variante für fließende Formen"))
+            traits.append(("[AMOEBA]", PURPLE, "Amoeba variant for flowing shapes"))
         elif b_set == {3} and s_set == {4, 6, 7, 8}:
-            traits.append(("[STAINS]", YELLOW, "Stains: Fleckenartige, expandierende Muster"))
+            traits.append(("[STAINS]", YELLOW, "Stains: Blotchy, expanding patterns"))
 
     # 3. Comprehensive Behavioral Tags
     if len(b_set) == 0:
-        traits.append(("[INAKTIV]", GRAY, "Keine Geburten möglich - Welt stirbt rasch aus"))
+        traits.append(("[INACTIVE]", GRAY, "No births possible - World dies out quickly"))
     elif 0 in b_set:
-        traits.append(("[CHAOS]", RED, "Spontane Entstehung im leeren Raum (B0)"))
+        traits.append(("[CHAOS]", RED, "Spontaneous generation in empty space (B0)"))
 
     if len(s_set) == 0 and not (b_set == {2} and neighborhood == "moore"):
-        traits.append(("[STERBLICH]", RED, "Absolute Sterblichkeit: Jede Zelle stirbt sofort"))
+        traits.append(("[MORTAL]", RED, "Absolute mortality: Every cell dies instantly"))
     else:
         # Isolation & Loneliness checks
         if 1 not in s_set and 0 not in s_set:
-            traits.append(("[ISOLATION]", YELLOW, "Hohes Einsamkeitsrisiko (sterben bei < 2 Nachbarn)"))
+            traits.append(("[ISOLATION]", YELLOW, "High isolation risk (die with < 2 neighbors)"))
         
         # Overcrowding checks
         if any(x >= 6 for x in s_set):
-            traits.append(("[ROBUST]", GREEN, "Robust gegen Übervölkerung (vertragen viele Nachbarn)"))
+            traits.append(("[ROBUST]", GREEN, "Robust against overcrowding (tolerate many neighbors)"))
         elif max(s_set) <= 3 if s_set else True:
-            traits.append(("[EMPFINDLICH]", ORANGE, "Empfindlich bei zu viel Gesellschaft"))
+            traits.append(("[SENSITIVE]", ORANGE, "Sensitive to too much crowding"))
 
         # Growth / Expansion checks
         if len(b_set) >= 4:
-            traits.append(("[EXPANSIV]", RED, "Sehr hohes Wachstumstempo durch viele Geburtsregeln"))
+            traits.append(("[EXPANSIVE]", RED, "Very high growth rate due to many birth rules"))
         elif len(b_set) <= 1:
-            traits.append(("[SELEKTIV]", BLUE, "Selektives Wachstum (brauchen exakte Bedingungen)"))
+            traits.append(("[SELECTIVE]", BLUE, "Selective growth (require exact conditions)"))
 
         # Stability checks
         if len(s_set) >= 5:
-            traits.append(("[STABIL]", GREEN, "Hohe Beständigkeit und dichte Strukturen"))
+            traits.append(("[STABLE]", GREEN, "High persistence and dense structures"))
 
     # Fallback if no specific tags except neighborhood were triggered
     if len(traits) == 1:
-        traits.append(("[CUSTOM]", GRAY, "Benutzerdefinierte Regelkombination"))
+        traits.append(("[CUSTOM]", GRAY, "Custom rule combination"))
 
     return traits
 
@@ -317,7 +317,7 @@ def show_config_screen(screen, font, title_font, desc_font):
                 rel_x = max(0, min(slider_w, mouse_pos[0] - slider_rect.x))
                 sim_speed = int(1 + (rel_x / slider_w) * 59)
 
-        speed_lbl = font.render(f"Geschwindigkeit: {sim_speed} Generationen/Sekunde", True, COLOR_TEXT)
+        speed_lbl = font.render(f"Speed: {sim_speed} Generations/Second", True, COLOR_TEXT)
         screen.blit(speed_lbl, (center_x - speed_lbl.get_width() // 2, slider_lbl_y))
 
         pygame.draw.rect(screen, COLOR_SLIDER_TRACK, slider_rect, border_radius=4)
@@ -326,18 +326,18 @@ def show_config_screen(screen, font, title_font, desc_font):
         thumb_x = slider_rect.x + fill_w
         pygame.draw.circle(screen, COLOR_SLIDER_THUMB, (thumb_x, slider_y + slider_h // 2), 8)
 
-        n_title = font.render("Nachbarschafts-Typ wählen:", True, COLOR_TEXT)
+        n_title = font.render("Select Neighborhood Type:", True, COLOR_TEXT)
         screen.blit(n_title, (center_x - n_title.get_width() // 2, neigh_lbl_y))
 
         draw_checkbox(
             screen, font, cb_moore_rect,
-            "Moore-Nachbarschaft (8 Nachbarn - Standard)",
+            "Moore Neighborhood (8 neighbors - Default)",
             neighborhood == "moore",
             cb_moore_rect.collidepoint(mouse_pos)
         )
         draw_checkbox(
             screen, font, cb_neumann_rect,
-            "Von-Neumann-Nachbarschaft (4 Nachbarn)",
+            "Von Neumann Neighborhood (4 neighbors)",
             neighborhood == "von_neumann",
             cb_neumann_rect.collidepoint(mouse_pos)
         )
