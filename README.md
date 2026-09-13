@@ -59,13 +59,13 @@ Required library:
 
 ## 🎮 Controls
 
-Pause / Resume = [SPACE]
-Speed (Hold) = + / - OR [UP] / [DOWN]
-Randomize Viewport = [R]
-Clear Grid = [C]
-Draw Cell (Click & Drag) = [LEFT]
-Pan Viewport (Click & Drag) = [RIGHT]
-Zoom In / Out = [WHEEL]
+  - Pause / Resume = [SPACE]
+  - Speed (Hold) = + / - OR [UP] / [DOWN]
+  - Randomize Viewport = [R]
+  - Clear Grid = [C]
+  - Draw Cell (Click & Drag) = [LEFT]
+  - Pan Viewport (Click & Drag) = [RIGHT]
+  - Zoom In / Out = [WHEEL]
 
 ---
 
