@@ -284,7 +284,7 @@ def show_config_screen(screen, font, title_font, desc_font):
         mouse_pos = pygame.mouse.get_pos()
         screen.fill(COLOR_MENU_BG)
 
-        title_surf = title_font.render("Game of Life - Settings", True, COLOR_TEXT)
+        title_surf = title_font.render(" Conway's Game of Life - Settings", True, COLOR_TEXT)
         screen.blit(title_surf, (center_x - title_surf.get_width() // 2, title_y))
 
         # Advanced Overlay Panel Rects
