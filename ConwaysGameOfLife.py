@@ -1,10 +1,10 @@
 import random
 import pygame
 
-# Configuration
+# Configuration Defaults
 WIDTH, HEIGHT = 900, 850
-MAX_AGE = 40
-FADE_SPEED = 25  # How fast the trail fades out (0-255 per step)
+DEFAULT_MAX_AGE = 40
+DEFAULT_FADE_SPEED = 25
 
 # Colors
 COLOR_BG = (10, 10, 15)
@@ -22,9 +22,9 @@ COLOR_GRID = (30, 30, 45)
 CYAN = (80, 200, 240)
 
 
-def get_cell_color(age):
+def get_cell_color(age, max_age):
     """Calculates a smooth color gradient based on cell age."""
-    factor = min(age / MAX_AGE, 1.0)
+    factor = min(age / max_age, 1.0)
 
     if factor < 0.33:
         sub_f = factor / 0.33
@@ -99,27 +99,22 @@ def get_rule_properties(survive_rules, birth_rules, neighborhood):
     if len(s_set) == 0 and not (b_set == {2} and neighborhood == "moore"):
         traits.append(("[MORTAL]", RED, "Absolute mortality: Every cell dies instantly"))
     else:
-        # Isolation & Loneliness checks
         if 1 not in s_set and 0 not in s_set:
             traits.append(("[ISOLATION]", YELLOW, "High isolation risk (die with < 2 neighbors)"))
-        
-        # Overcrowding checks
+
         if any(x >= 6 for x in s_set):
             traits.append(("[ROBUST]", GREEN, "Robust against overcrowding (tolerate many neighbors)"))
         elif max(s_set) <= 3 if s_set else True:
             traits.append(("[SENSITIVE]", ORANGE, "Sensitive to too much crowding"))
 
-        # Growth / Expansion checks
         if len(b_set) >= 4:
             traits.append(("[EXPANSIVE]", RED, "Very high growth rate due to many birth rules"))
         elif len(b_set) <= 1:
             traits.append(("[SELECTIVE]", BLUE, "Selective growth (require exact conditions)"))
 
-        # Stability checks
         if len(s_set) >= 5:
             traits.append(("[STABLE]", GREEN, "High persistence and dense structures"))
 
-    # Fallback if no specific tags except neighborhood were triggered
     if len(traits) == 1:
         traits.append(("[CUSTOM]", GRAY, "Custom rule combination"))
 
@@ -138,8 +133,8 @@ def get_neighbor_offsets(neighborhood):
         )
 
 
-def update_grid(cells, dead_cells, survive_rules, birth_rules, neighborhood):
-    """Calculates next gen and records dying cells for the fade-out effect."""
+def update_grid(cells, dead_cells, survive_rules, birth_rules, neighborhood, fade_enabled):
+    """Calculates next gen and records dying cells for the fade-out effect if enabled."""
     offsets = get_neighbor_offsets(neighborhood)
     neighbor_counts = {}
 
@@ -157,9 +152,10 @@ def update_grid(cells, dead_cells, survive_rules, birth_rules, neighborhood):
         elif not is_alive and count in birth_rules:
             new_cells[pos] = 1
 
-    for pos in cells:
-        if pos not in new_cells:
-            dead_cells[pos] = 200
+    if fade_enabled:
+        for pos in cells:
+            if pos not in new_cells:
+                dead_cells[pos] = 200
 
     return new_cells
 
@@ -199,15 +195,22 @@ def draw_checkbox(screen, font, rect, text, is_checked, is_hovered):
 
 
 def show_config_screen(screen, font, title_font, desc_font):
-    """Configuration screen with checkboxes and dynamic tags."""
+    """Configuration screen with checkboxes, dynamic tags, and advanced settings popup."""
     survive_selected = {2, 3}
     birth_selected = {3}
     sim_speed = 15
     neighborhood = "moore"
 
+    max_age = DEFAULT_MAX_AGE
+    fade_speed = DEFAULT_FADE_SPEED
+    fade_enabled = True
+    show_advanced = False
+
     running_config = True
     clock = pygame.time.Clock()
     dragging_slider = False
+    dragging_adv_age = False
+    dragging_adv_fade = False
 
     btn_size = 36
     btn_gap = 6
@@ -217,7 +220,7 @@ def show_config_screen(screen, font, title_font, desc_font):
         win_w, win_h = screen.get_size()
         center_x = win_w // 2
 
-        curr_y = max(15, win_h // 2 - 380)
+        curr_y = max(15, win_h // 2 - 400)
 
         title_y = curr_y
         curr_y += 45
@@ -258,9 +261,14 @@ def show_config_screen(screen, font, title_font, desc_font):
         desc_box_h = max(50, len(traits) * line_height + padding_y * 2)
 
         desc_box_rect = pygame.Rect(center_x - desc_box_w // 2, desc_box_y, desc_box_w, desc_box_h)
-        curr_y = desc_box_y + desc_box_h + 12
+        curr_y = desc_box_y + desc_box_h + 15
 
-        start_button = pygame.Rect(center_x - 110, curr_y, 220, 40)
+        # Advanced Settings Button (Now ABOVE Start Game)
+        adv_button = pygame.Rect(center_x - 90, curr_y, 180, 30)
+        curr_y += 40
+
+        # Start Game Button
+        start_button = pygame.Rect(center_x - 110, curr_y, 220, 42)
 
         row_start_x = center_x - (row_width // 2)
 
@@ -276,46 +284,87 @@ def show_config_screen(screen, font, title_font, desc_font):
         title_surf = title_font.render("Game of Life - Settings", True, COLOR_TEXT)
         screen.blit(title_surf, (center_x - title_surf.get_width() // 2, title_y))
 
+        # Advanced Overlay Panel Rects
+        overlay_w, overlay_h = 460, 320
+        overlay_rect = pygame.Rect(center_x - overlay_w // 2, win_h // 2 - overlay_h // 2, overlay_w, overlay_h)
+        close_adv_btn = pygame.Rect(overlay_rect.right - 90, overlay_rect.bottom - 40, 70, 30)
+
+        adv_age_slider = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 75, 400, 8)
+        adv_fade_slider = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 165, 400, 8)
+        cb_fade_rect = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 225, 300, 24)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                thumb_x = slider_rect.x + int(((sim_speed - 1) / 59) * slider_w)
-                thumb_rect = pygame.Rect(thumb_x - 10, slider_y - 6, 20, 20)
+                if show_advanced:
+                    # Advanced modal clicks
+                    thumb_age_x = adv_age_slider.x + int(((max_age - 10) / 90) * adv_age_slider.w)
+                    thumb_age_rect = pygame.Rect(thumb_age_x - 10, adv_age_slider.y - 6, 20, 20)
+                    if thumb_age_rect.collidepoint(mouse_pos) or adv_age_slider.inflate(0, 10).collidepoint(mouse_pos):
+                        dragging_adv_age = True
 
-                if thumb_rect.collidepoint(mouse_pos) or slider_rect.inflate(0, 10).collidepoint(mouse_pos):
-                    dragging_slider = True
+                    if fade_enabled:
+                        thumb_fade_x = adv_fade_slider.x + int(((fade_speed - 5) / 95) * adv_fade_slider.w)
+                        thumb_fade_rect = pygame.Rect(thumb_fade_x - 10, adv_fade_slider.y - 6, 20, 20)
+                        if thumb_fade_rect.collidepoint(mouse_pos) or adv_fade_slider.inflate(0, 10).collidepoint(mouse_pos):
+                            dragging_adv_fade = True
 
-                if cb_moore_rect.collidepoint(mouse_pos):
-                    neighborhood = "moore"
-                elif cb_neumann_rect.collidepoint(mouse_pos):
-                    neighborhood = "von_neumann"
+                    if cb_fade_rect.collidepoint(mouse_pos):
+                        fade_enabled = not fade_enabled
 
-                for btn in buttons:
-                    if btn["rect"].collidepoint(mouse_pos):
-                        val = btn["val"]
-                        if btn["type"] == "survive":
-                            if val in survive_selected:
-                                survive_selected.remove(val)
+                    if close_adv_btn.collidepoint(mouse_pos):
+                        show_advanced = False
+                else:
+                    # Main menu clicks
+                    thumb_x = slider_rect.x + int(((sim_speed - 1) / 59) * slider_w)
+                    thumb_rect = pygame.Rect(thumb_x - 10, slider_y - 6, 20, 20)
+
+                    if thumb_rect.collidepoint(mouse_pos) or slider_rect.inflate(0, 10).collidepoint(mouse_pos):
+                        dragging_slider = True
+
+                    if cb_moore_rect.collidepoint(mouse_pos):
+                        neighborhood = "moore"
+                    elif cb_neumann_rect.collidepoint(mouse_pos):
+                        neighborhood = "von_neumann"
+
+                    for btn in buttons:
+                        if btn["rect"].collidepoint(mouse_pos):
+                            val = btn["val"]
+                            if btn["type"] == "survive":
+                                if val in survive_selected:
+                                    survive_selected.remove(val)
+                                else:
+                                    survive_selected.add(val)
                             else:
-                                survive_selected.add(val)
-                        else:
-                            if val in birth_selected:
-                                birth_selected.remove(val)
-                            else:
-                                birth_selected.add(val)
+                                if val in birth_selected:
+                                    birth_selected.remove(val)
+                                else:
+                                    birth_selected.add(val)
 
-                if start_button.collidepoint(mouse_pos):
-                    running_config = False
+                    if adv_button.collidepoint(mouse_pos):
+                        show_advanced = True
+
+                    if start_button.collidepoint(mouse_pos):
+                        running_config = False
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 dragging_slider = False
+                dragging_adv_age = False
+                dragging_adv_fade = False
 
-            elif event.type == pygame.MOUSEMOTION and dragging_slider:
-                rel_x = max(0, min(slider_w, mouse_pos[0] - slider_rect.x))
-                sim_speed = int(1 + (rel_x / slider_w) * 59)
+            elif event.type == pygame.MOUSEMOTION:
+                if dragging_slider:
+                    rel_x = max(0, min(slider_w, mouse_pos[0] - slider_rect.x))
+                    sim_speed = int(1 + (rel_x / slider_w) * 59)
+                elif dragging_adv_age:
+                    rel_x = max(0, min(adv_age_slider.w, mouse_pos[0] - adv_age_slider.x))
+                    max_age = int(10 + (rel_x / adv_age_slider.w) * 90)
+                elif dragging_adv_fade and fade_enabled:
+                    rel_x = max(0, min(adv_fade_slider.w, mouse_pos[0] - adv_fade_slider.x))
+                    fade_speed = int(5 + (rel_x / adv_fade_slider.w) * 95)
 
         speed_lbl = font.render(f"Speed: {sim_speed} Generations/Second", True, COLOR_TEXT)
         screen.blit(speed_lbl, (center_x - speed_lbl.get_width() // 2, slider_lbl_y))
@@ -371,15 +420,80 @@ def show_config_screen(screen, font, title_font, desc_font):
             desc_surf = desc_font.render(" " + desc, True, COLOR_TEXT_MUTED)
             screen.blit(desc_surf, (start_x + tag_surf.get_width(), current_y))
 
+        # Render Advanced Settings Button (Above Start)
+        adv_btn_col = (60, 60, 85) if adv_button.collidepoint(mouse_pos) else (40, 40, 60)
+        pygame.draw.rect(screen, adv_btn_col, adv_button, border_radius=6)
+        pygame.draw.rect(screen, (80, 80, 110), adv_button, width=1, border_radius=6)
+        adv_txt = desc_font.render("Advanced Settings", True, COLOR_TEXT)
+        screen.blit(adv_txt, (adv_button.centerx - adv_txt.get_width() // 2, adv_button.centery - adv_txt.get_height() // 2))
+
+        # Render Start Game Button
         btn_col = COLOR_ACCENT_HOVER if start_button.collidepoint(mouse_pos) else COLOR_ACCENT
         pygame.draw.rect(screen, btn_col, start_button, border_radius=8)
         start_txt = font.render("START GAME", True, (255, 255, 255))
         screen.blit(start_txt, (start_button.centerx - start_txt.get_width() // 2, start_button.centery - start_txt.get_height() // 2))
 
+        # Render Advanced Settings Overlay if active
+        if show_advanced:
+            dark_overlay = pygame.Surface((win_w, win_h), pygame.SRCALPHA)
+            dark_overlay.fill((0, 0, 0, 150))
+            screen.blit(dark_overlay, (0, 0))
+
+            pygame.draw.rect(screen, COLOR_MENU_BG, overlay_rect, border_radius=10)
+            pygame.draw.rect(screen, COLOR_ACCENT, overlay_rect, width=2, border_radius=10)
+
+            adv_title = font.render("Advanced Settings", True, COLOR_TEXT)
+            screen.blit(adv_title, (overlay_rect.centerx - adv_title.get_width() // 2, overlay_rect.y + 15))
+
+            # 1. Max Age Setting
+            lbl_age = font.render(f"Max Cell Age Gradient: {max_age}", True, COLOR_TEXT)
+            screen.blit(lbl_age, (overlay_rect.x + 30, overlay_rect.y + 50))
+
+            desc_age = desc_font.render("Bestimmt, nach wie vielen Generationen eine Zelle ihre finale Farbe erreicht.", True, COLOR_TEXT_MUTED)
+            screen.blit(desc_age, (overlay_rect.x + 30, overlay_rect.y + 90))
+
+            pygame.draw.rect(screen, COLOR_SLIDER_TRACK, adv_age_slider, border_radius=4)
+            fill_age_w = int(((max_age - 10) / 90) * adv_age_slider.w)
+            pygame.draw.rect(screen, COLOR_ACCENT, (adv_age_slider.x, adv_age_slider.y, fill_age_w, adv_age_slider.h), border_radius=4)
+            thumb_age_x = adv_age_slider.x + fill_age_w
+            pygame.draw.circle(screen, COLOR_SLIDER_THUMB, (thumb_age_x, adv_age_slider.y + adv_age_slider.h // 2), 7)
+
+            # 2. Trail Fade Speed Setting
+            track_col = COLOR_SLIDER_TRACK if fade_enabled else (30, 30, 40)
+            accent_col = COLOR_ACCENT if fade_enabled else (60, 60, 70)
+            txt_col = COLOR_TEXT if fade_enabled else COLOR_TEXT_MUTED
+
+            lbl_fade = font.render(f"Trail Fade Speed: {fade_speed}", True, txt_col)
+            screen.blit(lbl_fade, (overlay_rect.x + 30, overlay_rect.y + 140))
+
+            desc_fade = desc_font.render("Steuert, wie schnell das Nachleuchten abgestorbener Zellen verblasst.", True, COLOR_TEXT_MUTED)
+            screen.blit(desc_fade, (overlay_rect.x + 30, overlay_rect.y + 180))
+
+            pygame.draw.rect(screen, track_col, adv_fade_slider, border_radius=4)
+            if fade_enabled:
+                fill_fade_w = int(((fade_speed - 5) / 95) * adv_fade_slider.w)
+                pygame.draw.rect(screen, accent_col, (adv_fade_slider.x, adv_fade_slider.y, fill_fade_w, adv_fade_slider.h), border_radius=4)
+                thumb_fade_x = adv_fade_slider.x + fill_fade_w
+                pygame.draw.circle(screen, COLOR_SLIDER_THUMB, (thumb_fade_x, adv_fade_slider.y + adv_fade_slider.h // 2), 7)
+
+            # Checkbox: Enable/Disable Fade
+            draw_checkbox(
+                screen, font, cb_fade_rect,
+                "Enable Trail Fade (Nachleucht-Effekt)",
+                fade_enabled,
+                cb_fade_rect.collidepoint(mouse_pos)
+            )
+
+            # Close button
+            close_col = COLOR_ACCENT_HOVER if close_adv_btn.collidepoint(mouse_pos) else COLOR_ACCENT
+            pygame.draw.rect(screen, close_col, close_adv_btn, border_radius=5)
+            close_txt = font.render("Close", True, (255, 255, 255))
+            screen.blit(close_txt, (close_adv_btn.centerx - close_txt.get_width() // 2, close_adv_btn.centery - close_txt.get_height() // 2))
+
         pygame.display.flip()
         clock.tick(60)
 
-    return survive_selected, birth_selected, sim_speed, neighborhood
+    return survive_selected, birth_selected, sim_speed, neighborhood, max_age, fade_speed, fade_enabled
 
 
 def draw_grid_lines(screen, win_w, win_h, offset_x, offset_y, cell_size):
@@ -526,7 +640,9 @@ def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Infinite Game of Life")
 
-    survive_rules, birth_rules, sim_speed, neighborhood = show_config_screen(screen, font, title_font, desc_font)
+    survive_rules, birth_rules, sim_speed, neighborhood, max_age, fade_speed, fade_enabled = show_config_screen(
+        screen, font, title_font, desc_font
+    )
 
     cell_size = 16.0
     win_w, win_h = screen.get_size()
@@ -624,24 +740,25 @@ def main():
 
         size = max(1, int(cell_size) - 1) if cell_size > 4 else int(cell_size)
 
-        # 1. Dead Cells (Fade-Out Trail)
-        to_remove = []
-        ghost_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+        # 1. Dead Cells (Fade-Out Trail) - Only rendered if enabled
+        if fade_enabled:
+            to_remove = []
+            ghost_surface = pygame.Surface((size, size), pygame.SRCALPHA)
 
-        for (r, c), alpha in dead_cells.items():
-            x = c * cell_size + offset_x
-            y = r * cell_size + offset_y
+            for (r, c), alpha in dead_cells.items():
+                x = c * cell_size + offset_x
+                y = r * cell_size + offset_y
 
-            if -cell_size <= x <= win_w and -cell_size <= y <= win_h:
-                ghost_surface.fill((100, 100, 150, int(alpha)))
-                screen.blit(ghost_surface, (int(x), int(y)))
+                if -cell_size <= x <= win_w and -cell_size <= y <= win_h:
+                    ghost_surface.fill((100, 100, 150, int(alpha)))
+                    screen.blit(ghost_surface, (int(x), int(y)))
 
-            dead_cells[(r, c)] -= FADE_SPEED * (60 / 1000.0)
-            if dead_cells[(r, c)] <= 0:
-                to_remove.append((r, c))
+                dead_cells[(r, c)] -= fade_speed * (60 / 1000.0)
+                if dead_cells[(r, c)] <= 0:
+                    to_remove.append((r, c))
 
-        for pos in to_remove:
-            del dead_cells[pos]
+            for pos in to_remove:
+                del dead_cells[pos]
 
         # 2. Living Cells
         for (r, c), age in cells.items():
@@ -649,14 +766,14 @@ def main():
             y = r * cell_size + offset_y
 
             if -cell_size <= x <= win_w and -cell_size <= y <= win_h:
-                color = get_cell_color(age)
+                color = get_cell_color(age, max_age)
                 pygame.draw.rect(screen, color, (int(x), int(y), size, size))
 
         # Simulation Step
         step_interval = 1000 / sim_speed
 
         if not paused and (current_time - last_step_time >= step_interval):
-            cells = update_grid(cells, dead_cells, survive_rules, birth_rules, neighborhood)
+            cells = update_grid(cells, dead_cells, survive_rules, birth_rules, neighborhood, fade_enabled)
 
             count = len(cells)
             history_100.append(count)
