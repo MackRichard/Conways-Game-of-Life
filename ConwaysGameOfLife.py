@@ -176,7 +176,7 @@ def generate_random_in_viewport(screen_w, screen_h, offset_x, offset_y, cell_siz
 
 
 def draw_checkbox(screen, font, rect, text, is_checked, is_hovered):
-    """Draws a custom checkbox with text."""
+    """Draws a custom checkbox with optional inline text."""
     box_size = 18
     box_rect = pygame.Rect(rect.x, rect.centery - box_size // 2, box_size, box_size)
 
@@ -190,8 +190,11 @@ def draw_checkbox(screen, font, rect, text, is_checked, is_hovered):
         p3 = (box_rect.x + 14, box_rect.y + 5)
         pygame.draw.lines(screen, COLOR_ACCENT, False, [p1, p2, p3], 2)
 
-    txt_surf = font.render(text, True, COLOR_TEXT if is_checked else COLOR_TEXT_MUTED)
-    screen.blit(txt_surf, (box_rect.right + 10, rect.centery - txt_surf.get_height() // 2))
+    if text:
+        txt_surf = font.render(text, True, COLOR_TEXT if is_checked else COLOR_TEXT_MUTED)
+        screen.blit(txt_surf, (box_rect.right + 10, rect.centery - txt_surf.get_height() // 2))
+
+    return box_rect
 
 
 def show_config_screen(screen, font, title_font, desc_font):
@@ -235,7 +238,7 @@ def show_config_screen(screen, font, title_font, desc_font):
         neigh_lbl_y = curr_y
         curr_y += 22
 
-        cb_width = 240
+        cb_width = 340
         cb_height = 24
 
         cb_moore_rect = pygame.Rect(center_x - cb_width // 2, curr_y, cb_width, cb_height)
@@ -263,7 +266,7 @@ def show_config_screen(screen, font, title_font, desc_font):
         desc_box_rect = pygame.Rect(center_x - desc_box_w // 2, desc_box_y, desc_box_w, desc_box_h)
         curr_y = desc_box_y + desc_box_h + 15
 
-        # Advanced Settings Button (Now ABOVE Start Game)
+        # Advanced Settings Button (Above Start Game)
         adv_button = pygame.Rect(center_x - 90, curr_y, 180, 30)
         curr_y += 40
 
@@ -285,13 +288,15 @@ def show_config_screen(screen, font, title_font, desc_font):
         screen.blit(title_surf, (center_x - title_surf.get_width() // 2, title_y))
 
         # Advanced Overlay Panel Rects
-        overlay_w, overlay_h = 460, 320
+        overlay_w, overlay_h = 460, 300
         overlay_rect = pygame.Rect(center_x - overlay_w // 2, win_h // 2 - overlay_h // 2, overlay_w, overlay_h)
         close_adv_btn = pygame.Rect(overlay_rect.right - 90, overlay_rect.bottom - 40, 70, 30)
 
         adv_age_slider = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 75, 400, 8)
-        adv_fade_slider = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 165, 400, 8)
-        cb_fade_rect = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 225, 300, 24)
+        
+        # Position Checkbox directly to the left of "Trail Fade Speed:"
+        cb_fade_rect = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 140, 18, 18)
+        adv_fade_slider = pygame.Rect(overlay_rect.x + 30, overlay_rect.y + 175, 400, 8)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -430,7 +435,7 @@ def show_config_screen(screen, font, title_font, desc_font):
         # Render Start Game Button
         btn_col = COLOR_ACCENT_HOVER if start_button.collidepoint(mouse_pos) else COLOR_ACCENT
         pygame.draw.rect(screen, btn_col, start_button, border_radius=8)
-        start_txt = font.render("START GAME", True, (255, 255, 255))
+        start_txt = font.render("START", True, (255, 255, 255))
         screen.blit(start_txt, (start_button.centerx - start_txt.get_width() // 2, start_button.centery - start_txt.get_height() // 2))
 
         # Render Advanced Settings Overlay if active
@@ -449,25 +454,26 @@ def show_config_screen(screen, font, title_font, desc_font):
             lbl_age = font.render(f"Max Cell Age Gradient: {max_age}", True, COLOR_TEXT)
             screen.blit(lbl_age, (overlay_rect.x + 30, overlay_rect.y + 50))
 
-            desc_age = desc_font.render("Bestimmt, nach wie vielen Generationen eine Zelle ihre finale Farbe erreicht.", True, COLOR_TEXT_MUTED)
-            screen.blit(desc_age, (overlay_rect.x + 30, overlay_rect.y + 90))
-
             pygame.draw.rect(screen, COLOR_SLIDER_TRACK, adv_age_slider, border_radius=4)
             fill_age_w = int(((max_age - 10) / 90) * adv_age_slider.w)
             pygame.draw.rect(screen, COLOR_ACCENT, (adv_age_slider.x, adv_age_slider.y, fill_age_w, adv_age_slider.h), border_radius=4)
             thumb_age_x = adv_age_slider.x + fill_age_w
             pygame.draw.circle(screen, COLOR_SLIDER_THUMB, (thumb_age_x, adv_age_slider.y + adv_age_slider.h // 2), 7)
 
-            # 2. Trail Fade Speed Setting
+            # 2. Trail Fade Speed Setting (with Checkbox to the left)
+            draw_checkbox(
+                screen, font, cb_fade_rect,
+                "",  # Pass empty text so label is drawn manually next to it
+                fade_enabled,
+                cb_fade_rect.collidepoint(mouse_pos)
+            )
+
             track_col = COLOR_SLIDER_TRACK if fade_enabled else (30, 30, 40)
             accent_col = COLOR_ACCENT if fade_enabled else (60, 60, 70)
             txt_col = COLOR_TEXT if fade_enabled else COLOR_TEXT_MUTED
 
             lbl_fade = font.render(f"Trail Fade Speed: {fade_speed}", True, txt_col)
-            screen.blit(lbl_fade, (overlay_rect.x + 30, overlay_rect.y + 140))
-
-            desc_fade = desc_font.render("Steuert, wie schnell das Nachleuchten abgestorbener Zellen verblasst.", True, COLOR_TEXT_MUTED)
-            screen.blit(desc_fade, (overlay_rect.x + 30, overlay_rect.y + 180))
+            screen.blit(lbl_fade, (cb_fade_rect.right + 10, overlay_rect.y + 140))
 
             pygame.draw.rect(screen, track_col, adv_fade_slider, border_radius=4)
             if fade_enabled:
@@ -475,14 +481,6 @@ def show_config_screen(screen, font, title_font, desc_font):
                 pygame.draw.rect(screen, accent_col, (adv_fade_slider.x, adv_fade_slider.y, fill_fade_w, adv_fade_slider.h), border_radius=4)
                 thumb_fade_x = adv_fade_slider.x + fill_fade_w
                 pygame.draw.circle(screen, COLOR_SLIDER_THUMB, (thumb_fade_x, adv_fade_slider.y + adv_fade_slider.h // 2), 7)
-
-            # Checkbox: Enable/Disable Fade
-            draw_checkbox(
-                screen, font, cb_fade_rect,
-                "Enable Trail Fade (Nachleucht-Effekt)",
-                fade_enabled,
-                cb_fade_rect.collidepoint(mouse_pos)
-            )
 
             # Close button
             close_col = COLOR_ACCENT_HOVER if close_adv_btn.collidepoint(mouse_pos) else COLOR_ACCENT
@@ -638,7 +636,7 @@ def main():
     title_font = pygame.font.SysFont("Consolas", 22, bold=True)
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-    pygame.display.set_caption("Infinite Game of Life")
+    pygame.display.set_caption("Conway's Game of Life")
 
     survive_rules, birth_rules, sim_speed, neighborhood, max_age, fade_speed, fade_enabled = show_config_screen(
         screen, font, title_font, desc_font
@@ -740,7 +738,7 @@ def main():
 
         size = max(1, int(cell_size) - 1) if cell_size > 4 else int(cell_size)
 
-        # 1. Dead Cells (Fade-Out Trail) - Only rendered if enabled
+        # 1. Dead Cells (Fade-Out Trail)
         if fade_enabled:
             to_remove = []
             ghost_surface = pygame.Surface((size, size), pygame.SRCALPHA)
@@ -784,7 +782,7 @@ def main():
 
             last_step_time = current_time
 
-        # Draw Overlay
+        # Draw Overlay & Charts
         draw_hud(screen, font, paused, len(cells), survive_rules, birth_rules, sim_speed, neighborhood)
         draw_population_charts(screen, font, history_100, full_history, win_h)
 
