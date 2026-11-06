@@ -1,0 +1,14 @@
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# Virtuelle Umgebungen
+.venv/
+venv/
+
+# Betriebssystem-Dateien
+.DS_Store
+Thumbs.db
+
+# IDE-Einstellungen
+.idea/
